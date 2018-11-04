@@ -6,6 +6,7 @@
     using System.Configuration;
     using System.Data;
     using System.Diagnostics;
+    using System.Dynamic;
     using System.IO;
     using System.Linq;
     using System.Text;
@@ -17,9 +18,10 @@
     using CsvHelper;
     using CsvHelper.Excel;
 
-    using ExcelDataReader;
-
     using Serilog;
+
+    using SmartFormat;
+    using SmartFormat.Core.Settings;
 
     internal class Program
     {
@@ -28,6 +30,7 @@
         private static void Main(string[] args)
         {
             SetLogger();
+            SetSmartFormatting();
             var result = Parser.Default.ParseArguments<TransformOptions, MergeOptions, DiffOptions>(args).MapResult((TransformOptions opts) => Transform(opts), (MergeOptions opts) => Merge(opts), (DiffOptions opts) => Diff(opts), errs => HandleParseErrors(errs?.ToList()));
             if (result == 0)
             {
@@ -41,18 +44,46 @@
             }
         }
 
-        private static int HandleParseErrors(List<Error> errs)
+        private static int Transform(TransformOptions opts)
         {
-            if (errs.Count > 1)
+            var input = opts.Input;
+            Log.Information($"Processing '{input}'");
+
+            var dataSet = input.GetData();
+            var sheetsCount = dataSet?.Tables?.Count;
+            Log.Information($"Found {sheetsCount} sheets\n");
+
+            var outputFile = !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (Path.GetFileNameWithoutExtension(input) + ".txt");
+            for (var i = 0; i < sheetsCount; i++)
             {
-                errs.ToList().ForEach(e => Log.Error(e.ToString()));
+                var table = dataSet?.Tables[i];
+                Log.Information($"Processing '{table.TableName}' sheet");
+                var rows = table.GetRows<ExpandoObject>().ToList();
+                if (rows?.Count > 0)
+                {
+                    Log.Information($"Row Count: {rows.Count}");
+                    CheckDuplicates(rows);
+                    var result = new StringBuilder();
+                    result.AppendLine($"-- {table.TableName}");
+                    foreach (var row in rows)
+                    {
+                        var val = Smart.Format(OutputFormat, row);
+                        result.AppendLine(val);
+                    }
+
+                    result.AppendLine();
+                    Log.Information($"Writing output to '{outputFile}'\n");
+                    if (i == 0)
+                    {
+                        File.WriteAllText(outputFile, result.ToString());
+                    }
+                    else
+                    {
+                        File.AppendAllText(outputFile, result.ToString());
+                    }
+                }
             }
 
-            return errs.Count;
-        }
-
-        private static int Diff(DiffOptions opts)
-        {
             return 0;
         }
 
@@ -60,52 +91,55 @@
         {
             var inputs = opts.Inputs;
             Log.Information($"Processing '{string.Join(", ", inputs)}'");
-            var tableDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, ExcelRow>>();
+            var tableDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, ExpandoObject>>();
             foreach (var input in inputs)
             {
-                var dataSet = GetData(input);
+                var dataSet = input.GetData();
                 var sheetsCount = dataSet?.Tables?.Count;
                 for (var i = 0; i < sheetsCount; i++)
                 {
                     var table = dataSet?.Tables[i];
                     var name = table.TableName;
-                    var isNewTable = tableDict.TryAdd(name, new ConcurrentDictionary<string, ExcelRow>());
+                    var isNewTable = tableDict.TryAdd(name, new ConcurrentDictionary<string, ExpandoObject>());
                     var rowsDict = tableDict[name];
                     Log.Information($"Processing '{name}' sheet");
-                    var rows = GetRows<ExcelRow>(table).ToList();
+                    var rows = table.GetRows<ExpandoObject>().ToList();
                     if (rows?.Count > 0)
                     {
                         foreach (var row in rows)
                         {
-                            ExcelRow resultRow = null;
+                            var id = row.Id();
+                            object resultRow = null;
                             if (opts.KeepRight)
                             {
-                                resultRow = rowsDict.AddOrUpdate(row.Id, row, (key, existingVal) => row);
+                                resultRow = rowsDict.AddOrUpdate(id, row, (key, existingVal) => row);
                             }
                             else if (opts.KeepLeft)
                             {
-                                resultRow = rowsDict.AddOrUpdate(row.Id, row, (key, existingRow) => existingRow);
+                                resultRow = rowsDict.AddOrUpdate(id, row, (key, existingRow) => existingRow);
                             }
                             else
                             {
-                                var rowExists = rowsDict.TryGetValue(row.Id, out var existingRow);
+                                var rowExists = rowsDict.TryGetValue(id, out var existingRow);
                                 if (rowExists)
                                 {
-                                    if (existingRow.Equals(row))
+                                    var newProps = row.AllProps();
+                                    var existingProps = rowsDict[row.Id()].AllProps();
+                                    if (existingProps.Equals(newProps))
                                     {
                                         resultRow = row;
                                     }
                                     else
                                     {
-                                        Log.Warning($"Keep row from (L)eft or (R)ight? (L / R)\n'L: {rowsDict[row.Id]}'\n'R: {row}'");
+                                        Log.Warning($"Keep row from (L)eft or (R)ight? (L / R)\nL: {existingProps}\nR: {newProps}");
                                         var choice = Console.ReadKey(true);
                                         if (choice.Key == ConsoleKey.R)
                                         {
-                                            resultRow = rowsDict.AddOrUpdate(row.Id, row, (key, existingVal) => row);
+                                            resultRow = rowsDict.AddOrUpdate(id, row, (key, existingVal) => row);
                                         }
                                         else if (choice.Key == ConsoleKey.L)
                                         {
-                                            resultRow = rowsDict.AddOrUpdate(row.Id, row, (key, existingVal) => row);
+                                            resultRow = rowsDict.AddOrUpdate(id, row, (key, existingVal) => row);
                                         }
                                         else
                                         {
@@ -115,7 +149,7 @@
                                 }
                                 else
                                 {
-                                    if (rowsDict.TryAdd(row.Id, row))
+                                    if (rowsDict.TryAdd(id, row))
                                     {
                                         resultRow = row;
                                     }
@@ -136,7 +170,13 @@
                     var worksheet = workbook.AddWorksheet(table.Key);
                     using (var writer = new CsvWriter(new ExcelSerializer(worksheet)))
                     {
-                        writer.WriteRecords(table.Value.Select(x => x.Value));
+                        var records = table.Value.Select(x =>
+                        {
+                            var val = x.Value;
+                            return val;
+                        }).ToList();
+
+                        writer.WriteRecords(records);
                     }
                 }
 
@@ -146,152 +186,38 @@
             return 0;
         }
 
-        private static int Transform(TransformOptions opts)
+        private static int Diff(DiffOptions opts)
         {
-            var input = opts.Input;
-            Log.Information($"Processing '{input}'");
-
-            var dataSet = GetData(input);
-            var sheetsCount = dataSet?.Tables?.Count;
-            Log.Information($"Found {sheetsCount} sheets\n");
-
-            var outputFile = !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (Path.GetFileNameWithoutExtension(input) + ".sql");
-            for (var i = 0; i < sheetsCount; i++)
-            {
-                var table = dataSet?.Tables[i];
-                Log.Information($"Processing '{table.TableName}' sheet");
-                var rows = GetRows<ExcelRow>(table).ToList();
-                if (rows?.Count > 0)
-                {
-                    Log.Information($"Row Count: {rows.Count}");
-                    CheckDuplicates(rows);
-                    var sql = new StringBuilder();
-                    sql.AppendLine($"-- {table.TableName}");
-                    foreach (var row in rows)
-                    {
-                        sql.AppendLine(string.Format(OutputFormat, row.ResourceId, row.English, row.French, row.Spanish, row.ResourceSet));
-                    }
-
-                    sql.AppendLine();
-                    Log.Information($"Writing output to '{outputFile}'\n");
-                    var result = sql.ToString().Replace("'", "''");
-                    if (i == 0)
-                    {
-                        File.WriteAllText(outputFile, result);
-                    }
-                    else
-                    {
-                        File.AppendAllText(outputFile, result);
-                    }
-                }
-            }
-
             return 0;
         }
 
-        private static void CheckDuplicates(IEnumerable<ExcelRow> rows)
+        private static int HandleParseErrors(List<Error> errs)
         {
-            var dupRows = rows.GroupBy(x => x.ResourceId + x.English + x.ResourceSet)?.Count(g => g.Count() > 1);
-            var dupKeys = rows.GroupBy(x => x.ResourceId)?.Count(g => g.Count() > 1);
-            var dupValues = rows.GroupBy(x => x.English)?.Count(g => g.Count() > 1);
-            Log.Warning($"Duplicates: Entire-row = {dupRows ?? 0} | ResourceId = {dupKeys ?? 0} | English = {dupValues ?? 0}");
+            if (errs.Count > 1)
+            {
+                errs.ToList().ForEach(e => Log.Error(e.ToString()));
+            }
 
-            var frenchDefaults = rows.Count(x => x.French.StartsWith("fr-CA"));
-            var spanishDefaults = rows.Count(x => x.Spanish.StartsWith("es-MX"));
-            Log.Warning($"Dev Defaults: French = {frenchDefaults} | Spanish = {spanishDefaults}");
+            return errs.Count;
+        }
+
+        private static void SetSmartFormatting()
+        {
+            Smart.Default.Settings.ConvertCharacterStringLiterals = false;
+            Smart.Default.Settings.CaseSensitivity = CaseSensitivityType.CaseInsensitive;
+            Smart.Default.Settings.FormatErrorAction = ErrorAction.Ignore;
+        }
+
+        private static void CheckDuplicates(IEnumerable<ExpandoObject> rows)
+        {
+            var dupRows = rows.GroupBy(x => x.AllProps())?.Count(g => g.Count() > 1);
+            var dupKeys = rows.GroupBy(x => x.Id())?.Count(g => g.Count() > 1);
+            Log.Warning($"Duplicates: Key = {dupKeys ?? 0} | Values = {dupRows ?? 0}");
         }
 
         private static void SetLogger()
         {
             Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console(outputTemplate: "[{Level:u3}] {Message}{NewLine}").WriteTo.RollingFile("Excellent_{Date}.log", outputTemplate: "{Timestamp:dd-MMM-yyyy HH:mm:ss} | [{Level}] {Message}{NewLine}{Exception}").Enrich.FromLogContext().CreateLogger();
-        }
-
-        public static IEnumerable<T> GetRows<T>(string input, int sheetIndex = 0)
-        {
-            var dataSet = GetData(input);
-            return GetRows<T>(dataSet, sheetIndex);
-        }
-
-        private static IEnumerable<T> GetRows<T>(DataSet dataSet, int sheetIndex)
-        {
-            var dataTable = dataSet?.Tables[sheetIndex];
-            return GetRows<T>(dataTable);
-        }
-
-        private static IEnumerable<T> GetRows<T>(DataTable dataTable)
-        {
-            return GetList<T>(dataTable);
-        }
-
-        public static DataSet GetData(string input)
-        {
-            try
-            {
-                using (var stream = File.Open(input, FileMode.Open, FileAccess.Read))
-                {
-                    using (var reader = ExcelReaderFactory.CreateReader(stream))
-                    {
-                        do
-                        {
-                            while (reader.Read())
-                            {
-                                // reader.GetDouble(0);
-                            }
-                        }
-                        while (reader.NextResult());
-
-                        var options = new ExcelDataSetConfiguration
-                        {
-                            UseColumnDataType = true,
-                            ConfigureDataTable = tableReader => new ExcelDataTableConfiguration
-                            {
-                                UseHeaderRow = true,
-                                FilterRow = rowReader => true
-                            }
-                        };
-
-                        var result = reader.AsDataSet(options);
-                        return result;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
-
-            return null;
-        }
-
-        private static List<T> GetList<T>(DataTable dt)
-        {
-            var data = new List<T>();
-            foreach (DataRow row in dt.Rows)
-            {
-                var item = GetItem<T>(row);
-                data.Add(item);
-            }
-
-            return data;
-        }
-
-        private static T GetItem<T>(DataRow dr)
-        {
-            var temp = typeof(T);
-            var obj = Activator.CreateInstance<T>();
-
-            foreach (DataColumn column in dr.Table.Columns)
-            {
-                foreach (var pro in temp.GetProperties())
-                {
-                    if (pro.Name == column.ColumnName)
-                    {
-                        pro.SetValue(obj, dr[column.ColumnName], null);
-                    }
-                }
-            }
-
-            return obj;
         }
     }
 }
