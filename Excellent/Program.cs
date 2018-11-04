@@ -8,31 +8,63 @@
     using System.IO;
     using System.Linq;
     using System.Text;
+
+    using CommandLine;
+
     using ExcelDataReader;
+
     using Serilog;
 
     internal class Program
     {
-        private readonly static string OutputFormat = ConfigurationManager.AppSettings["OutputFormat"];
+        private readonly static string OutputFormat = ConfigurationManager.AppSettings["TransformFormat"];
 
         private static void Main(string[] args)
         {
             SetLogger();
-            if (args.Length == 0 || !File.Exists(args[0]))
+            var result = Parser.Default.ParseArguments<TransformOptions, MergeOptions, DiffOptions>(args).MapResult((TransformOptions opts) => Transform(opts), (MergeOptions opts) => Merge(opts), (DiffOptions opts) => Diff(opts), errs => HandleParseErrors(errs?.ToList()));
+            if (result == 0)
             {
-                Log.Fatal("Provide a valid Excel file");
-                Console.ReadLine();
-                return;
+                Log.Information("Done!");
             }
 
-            var input = args[0];
+            Log.CloseAndFlush();
+            if (Debugger.IsAttached)
+            {
+                Console.ReadLine();
+            }
+        }
+
+        private static int HandleParseErrors(List<Error> errs)
+        {
+            if (errs.Count > 1)
+            {
+                errs.ToList().ForEach(e => Log.Error(e.ToString()));
+            }
+
+            return errs.Count;
+        }
+
+        private static int Diff(DiffOptions opts)
+        {
+            return 0;
+        }
+
+        private static int Merge(MergeOptions opts)
+        {
+            return 0;
+        }
+
+        private static int Transform(TransformOptions opts)
+        {
+            var input = opts.InputFile;
             Log.Information($"Processing '{input}'");
 
             var dataSet = GetData(input);
             var sheetsCount = dataSet?.Tables?.Count;
             Log.Information($"Found {sheetsCount} sheets\n");
 
-            var outputFile = args.Length == 2 ? args[1] : (Path.GetFileNameWithoutExtension(input) + ".sql");
+            var outputFile = !string.IsNullOrWhiteSpace(opts.OutputFile) ? opts.OutputFile : (Path.GetFileNameWithoutExtension(input) + ".sql");
             for (var i = 0; i < sheetsCount; i++)
             {
                 var table = dataSet?.Tables[i];
@@ -63,13 +95,7 @@
                 }
             }
 
-            Log.Information("Done!");
-            Log.CloseAndFlush();
-            if (Debugger.IsAttached)
-            {
-                Console.ReadLine();
-                Process.Start(outputFile);
-            }
+            return 0;
         }
 
         private static void CheckDuplicates(IEnumerable<ExcelRow> rows)
