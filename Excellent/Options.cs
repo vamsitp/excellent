@@ -5,7 +5,7 @@
     using CommandLine;
     using CommandLine.Text;
 
-    class Options
+    public class Options
     {
         [Option('o', "output", Required = false, HelpText = "Output file.")]
         public string Output { get; set; }

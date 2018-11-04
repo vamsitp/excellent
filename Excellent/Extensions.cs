@@ -8,11 +8,11 @@
     using System.Dynamic;
     using System.IO;
     using System.Linq;
-    using System.Reflection;
-    using System.Text;
 
     using ExcelDataReader;
+
     using Newtonsoft.Json;
+
     using SmartFormat;
 
     public static class Extensions
@@ -23,9 +23,16 @@
             return id;
         }
 
-        public static string AllProps(this ExpandoObject obj)
+        public static string AllProps(this ExpandoObject obj, string delimiter = " | ", bool namesOnly = false)
         {
-            var format = new StringBuilder();
+            var format = string.Join(delimiter, obj.AllPropsList(namesOnly));
+            var result = format.Trim(delimiter.Trim().ToCharArray());
+            return result;
+        }
+
+        public static List<object> AllPropsList(this ExpandoObject obj, bool namesOnly = false)
+        {
+            var props = new List<object>();
             var dict = obj as IDictionary<string, object>;
             if (dict == null)
             {
@@ -34,11 +41,10 @@
 
             foreach (var prop in dict)
             {
-                format.Append("{" + prop.Key + "} | ");
+                props.Add(namesOnly ? prop.Key : prop.Value);
             }
 
-            var result = Smart.Format(format.ToString(), obj).TrimEnd(' ', '|');
-            return result;
+            return props;
         }
 
         public static IEnumerable<T> GetRows<T>(this string input, int sheetIndex = 0)
@@ -109,6 +115,27 @@
 
             var result = JsonConvert.DeserializeObject<List<T>>(json);
             return result;
+        }
+
+        public static DataTable ToDataTable(this IList<ExpandoObject> items, string name)
+        {
+            if (items?.Count > 0)
+            {
+                var dt = new DataTable(name);
+                foreach (var key in ((IDictionary<string, object>)items.FirstOrDefault()).Keys)
+                {
+                    dt.Columns.Add(key);
+                }
+
+                foreach (var item in items)
+                {
+                    dt.Rows.Add(((IDictionary<string, object>)item).Values.ToArray());
+                }
+
+                return dt;
+            }
+
+            return null;
         }
     }
 }
