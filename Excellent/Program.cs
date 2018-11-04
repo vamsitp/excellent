@@ -1,6 +1,7 @@
 ﻿namespace Excellent
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Configuration;
     using System.Data;
@@ -9,7 +10,12 @@
     using System.Linq;
     using System.Text;
 
+    using ClosedXML.Excel;
+
     using CommandLine;
+
+    using CsvHelper;
+    using CsvHelper.Excel;
 
     using ExcelDataReader;
 
@@ -52,19 +58,104 @@
 
         private static int Merge(MergeOptions opts)
         {
+            var inputs = opts.Inputs;
+            Log.Information($"Processing '{string.Join(", ", inputs)}'");
+            var tableDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, ExcelRow>>();
+            foreach (var input in inputs)
+            {
+                var dataSet = GetData(input);
+                var sheetsCount = dataSet?.Tables?.Count;
+                for (var i = 0; i < sheetsCount; i++)
+                {
+                    var table = dataSet?.Tables[i];
+                    var name = table.TableName;
+                    var isNewTable = tableDict.TryAdd(name, new ConcurrentDictionary<string, ExcelRow>());
+                    var rowsDict = tableDict[name];
+                    Log.Information($"Processing '{name}' sheet");
+                    var rows = GetRows<ExcelRow>(table).ToList();
+                    if (rows?.Count > 0)
+                    {
+                        foreach (var row in rows)
+                        {
+                            ExcelRow resultRow = null;
+                            if (opts.KeepRight)
+                            {
+                                resultRow = rowsDict.AddOrUpdate(row.Id, row, (key, existingVal) => row);
+                            }
+                            else if (opts.KeepLeft)
+                            {
+                                resultRow = rowsDict.AddOrUpdate(row.Id, row, (key, existingRow) => existingRow);
+                            }
+                            else
+                            {
+                                var rowExists = rowsDict.TryGetValue(row.Id, out var existingRow);
+                                if (rowExists)
+                                {
+                                    if (existingRow.Equals(row))
+                                    {
+                                        resultRow = row;
+                                    }
+                                    else
+                                    {
+                                        Log.Warning($"Keep row from (L)eft or (R)ight? (L / R)\n'L: {rowsDict[row.Id]}'\n'R: {row}'");
+                                        var choice = Console.ReadKey(true);
+                                        if (choice.Key == ConsoleKey.R)
+                                        {
+                                            resultRow = rowsDict.AddOrUpdate(row.Id, row, (key, existingVal) => row);
+                                        }
+                                        else if (choice.Key == ConsoleKey.L)
+                                        {
+                                            resultRow = rowsDict.AddOrUpdate(row.Id, row, (key, existingVal) => row);
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("Invalid option!");
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    if (rowsDict.TryAdd(row.Id, row))
+                                    {
+                                        resultRow = row;
+                                    }
+                                }
+                            }
+
+                            Debug.Assert(resultRow != null, "Something went wrong during Merge operation!");
+                        }
+                    }
+                }
+            }
+
+            var outputFile = !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (string.Join("_", inputs.Select(Path.GetFileNameWithoutExtension)) + "_Merged.xlsx");
+            using (var workbook = new XLWorkbook(XLEventTracking.Disabled))
+            {
+                foreach (var table in tableDict)
+                {
+                    var worksheet = workbook.AddWorksheet(table.Key);
+                    using (var writer = new CsvWriter(new ExcelSerializer(worksheet)))
+                    {
+                        writer.WriteRecords(table.Value.Select(x => x.Value));
+                    }
+                }
+
+                workbook.SaveAs(outputFile);
+            }
+
             return 0;
         }
 
         private static int Transform(TransformOptions opts)
         {
-            var input = opts.InputFile;
+            var input = opts.Input;
             Log.Information($"Processing '{input}'");
 
             var dataSet = GetData(input);
             var sheetsCount = dataSet?.Tables?.Count;
             Log.Information($"Found {sheetsCount} sheets\n");
 
-            var outputFile = !string.IsNullOrWhiteSpace(opts.OutputFile) ? opts.OutputFile : (Path.GetFileNameWithoutExtension(input) + ".sql");
+            var outputFile = !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (Path.GetFileNameWithoutExtension(input) + ".sql");
             for (var i = 0; i < sheetsCount; i++)
             {
                 var table = dataSet?.Tables[i];
