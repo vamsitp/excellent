@@ -12,6 +12,8 @@
 
     using ClosedXML.Excel;
 
+    using KellermanSoftware.CompareNetObjects;
+
     using Serilog;
 
     using SmartFormat;
@@ -73,7 +75,7 @@
                     var name = table.TableName;
                     var isNewTable = tableDict.TryAdd(name, new ConcurrentDictionary<string, ExpandoObject>());
                     var rowsDict = tableDict[name];
-                    Log.Information($"Processing '{name}' sheet");
+                    Log.Information($"Processing '{name}' sheet (New: {isNewTable})");
                     var rows = table.GetRows<ExpandoObject>().ToList();
                     if (rows?.Count > 0)
                     {
@@ -83,11 +85,11 @@
                             object resultRow = null;
                             if (keepRight)
                             {
-                                resultRow = rowsDict.AddOrUpdate(id, row, (key, existingVal) => row);
+                                resultRow = rowsDict.AddOrUpdate(id, row, (key, existing) => row);
                             }
                             else if (keepLeft)
                             {
-                                resultRow = rowsDict.AddOrUpdate(id, row, (key, existingRow) => existingRow);
+                                resultRow = rowsDict.AddOrUpdate(id, row, (key, existing) => existing);
                             }
                             else
                             {
@@ -107,11 +109,11 @@
                                         Log.Information(choice.Key.ToString());
                                         if (choice.Key == ConsoleKey.R)
                                         {
-                                            resultRow = rowsDict.AddOrUpdate(id, row, (key, existingVal) => row);
+                                            resultRow = rowsDict.AddOrUpdate(id, row, (key, existing) => row);
                                         }
                                         else if (choice.Key == ConsoleKey.L)
                                         {
-                                            resultRow = rowsDict.AddOrUpdate(id, row, (key, existingVal) => row);
+                                            resultRow = rowsDict.AddOrUpdate(id, row, (key, existing) => existing);
                                         }
                                         else
                                         {
@@ -153,10 +155,28 @@
 
         public static int Diff(IEnumerable<string> inputs, string output)
         {
-            var datasets = new Dictionary<string, Dictionary<string, List<dynamic>>>();
+            var datasets = new Dictionary<string, Dictionary<string, IList<IDictionary<string, object>>>>();
             foreach (var input in inputs)
             {
-                datasets.Add(input, input.GetData().ToExpandoDict());
+                datasets.Add(input, input.GetData().ToExpandoProps());
+            }
+
+            var compareLogic = new CompareLogic
+            {
+                Config = new ComparisonConfig
+                {
+                    MaxDifferences = int.MaxValue,
+                    IgnoreCollectionOrder = true,
+                    TreatStringEmptyAndNullTheSame = true,
+                    CaseSensitive = false
+                }
+            };
+
+            // TODO: Handle more than 2 inputs?
+            var comparison = compareLogic.Compare(datasets.FirstOrDefault().Value, datasets.LastOrDefault().Value);
+            if (comparison.Differences.Count > 0)
+            {
+                Log.Warning(comparison.DifferencesString);
             }
 
             return 0;

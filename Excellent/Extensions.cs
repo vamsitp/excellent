@@ -139,9 +139,21 @@
             return null;
         }
 
-        public static Dictionary<string, List<dynamic>> ToExpandoDict(this DataSet ds)
+        public static Dictionary<string, IList<IDictionary<string, object>>> ToExpandoProps(this DataSet ds)
         {
-            var expandoDict = new Dictionary<string, List<dynamic>>();
+            var expandoDict = new Dictionary<string, IList<IDictionary<string, object>>>();
+            foreach (DataTable dt in ds.Tables)
+            {
+                var expandoList = dt.GetList<IDictionary<string, object>>();
+                expandoDict.Add(dt.TableName, expandoList);
+            }
+
+            return expandoDict;
+        }
+
+        public static Dictionary<string, List<ExpandoObject>> ToExpandoDict(this DataSet ds)
+        {
+            var expandoDict = new Dictionary<string, List<ExpandoObject>>();
             foreach (DataTable dt in ds.Tables)
             {
                 var expandoList = dt.ToExpandoList();
@@ -151,9 +163,9 @@
             return expandoDict;
         }
 
-        public static List<dynamic> ToExpandoList(this DataTable dt)
+        public static List<ExpandoObject> ToExpandoList(this DataTable dt)
         {
-            var expandoList = new List<dynamic>();
+            var expandoList = new List<ExpandoObject>();
             foreach (DataRow row in dt.Rows)
             {
                 var expandoDict = ToExpandoObject(dt, row);
@@ -163,7 +175,7 @@
             return expandoList;
         }
 
-        public static IDictionary<string, object> ToExpandoObject(DataTable dt, DataRow row)
+        public static ExpandoObject ToExpandoObject(DataTable dt, DataRow row)
         {
             var expandoDict = new ExpandoObject() as IDictionary<string, object>;
             foreach (DataColumn col in dt.Columns)
@@ -171,7 +183,32 @@
                 expandoDict.Add(col.ToString(), row[col.ColumnName].ToString());
             }
 
-            return expandoDict;
+            return (ExpandoObject)expandoDict;
+        }
+
+        public static bool TryAdd(this DataTableCollection dtc, DataTable dt)
+        {
+            if (dtc.Contains(dt.TableName))
+            {
+                return false;
+            }
+
+            dtc.Add(dt);
+            return true;
+        }
+
+        public static bool AddOrUpdate(this DataRowCollection drc, object key, DataRow addValue, Func<string, DataRow, DataRow> updateValueFactory)
+        {
+            var dr = drc.Find(key);
+            if (dr != null)
+            {
+                dr.Delete();
+                drc.Add(updateValueFactory);
+                return false;
+            }
+
+            drc.Add(addValue);
+            return true;
         }
     }
 }
