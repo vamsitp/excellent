@@ -151,39 +151,42 @@
             return expandoDict;
         }
 
-        public static Dictionary<string, List<ExpandoObject>> ToExpandoDict(this DataSet ds)
+        public static Dictionary<string, List<T>> ToDictionary<T>(this DataSet ds)
+            where T : IDictionary<string, object>
         {
-            var expandoDict = new Dictionary<string, List<ExpandoObject>>();
+            var expandoDict = new Dictionary<string, List<T>>();
             foreach (DataTable dt in ds.Tables)
             {
-                var expandoList = dt.ToExpandoList();
+                var expandoList = dt.ToDictionaryList<T>();
                 expandoDict.Add(dt.TableName, expandoList);
             }
 
             return expandoDict;
         }
 
-        public static List<ExpandoObject> ToExpandoList(this DataTable dt)
+        public static List<T> ToDictionaryList<T>(this DataTable dt)
+            where T : IDictionary<string, object>
         {
-            var expandoList = new List<ExpandoObject>();
+            var expandoList = new List<T>();
             foreach (DataRow row in dt.Rows)
             {
-                var expandoDict = ToExpandoObject(dt, row);
+                var expandoDict = row.ToDictionary<T>();
                 expandoList.Add(expandoDict);
             }
 
             return expandoList;
         }
 
-        public static ExpandoObject ToExpandoObject(DataTable dt, DataRow row)
+        public static T ToDictionary<T>(this DataRow row)
+            where T : IDictionary<string, object>
         {
             var expandoDict = new ExpandoObject() as IDictionary<string, object>;
-            foreach (DataColumn col in dt.Columns)
+            foreach (DataColumn col in row.Table.Columns)
             {
                 expandoDict.Add(col.ToString(), row[col.ColumnName].ToString());
             }
 
-            return (ExpandoObject)expandoDict;
+            return (T)expandoDict;
         }
 
         public static bool TryAdd(this DataTableCollection dtc, DataTable dt)

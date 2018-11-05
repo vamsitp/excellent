@@ -23,23 +23,22 @@
         public static int Transform(string input, string output, string outputFormat)
         {
             Log.Information($"Processing '{input}'");
-
-            var dataSet = input.GetData();
-            var sheetsCount = dataSet?.Tables?.Count;
+            var workbook = new Workbook(input.GetData());
+            var sheetsCount = workbook.Sheets.Count;
             Log.Information($"Found {sheetsCount} sheets\n");
 
             for (var i = 0; i < sheetsCount; i++)
             {
-                var table = dataSet?.Tables[i];
-                Log.Information($"Processing '{table.TableName}' sheet");
-                var rows = table.GetRows<ExpandoObject>().ToList();
-                if (rows?.Count > 0)
+                var sheet = workbook?.Sheets[i];
+                Log.Information($"Processing '{sheet.Name}' sheet");
+                var items = sheet.Items;
+                if (items?.Count > 0)
                 {
-                    Log.Information($"Row Count: {rows.Count}");
-                    CheckDuplicates(rows);
+                    Log.Information($"Row Count: {items.Count}");
+                    CheckDuplicates(sheet);
                     var result = new StringBuilder();
-                    result.AppendLine($"-- {table.TableName}");
-                    foreach (var row in rows)
+                    result.AppendLine($"-- {sheet.Name}");
+                    foreach (var row in items)
                     {
                         var val = Smart.Format(outputFormat, row);
                         result.AppendLine(val);
@@ -136,68 +135,69 @@
                 }
             }
 
-            using (var workbook = new XLWorkbook(XLEventTracking.Disabled))
-            {
-                var dataSet = new DataSet();
-                foreach (var table in tableDict)
-                {
-                    var records = table.Value.Select(x => x.Value).ToList();
-                    CheckDuplicates(records);
-                    dataSet.Tables.Add(records.ToDataTable(table.Key));
-                }
+            //using (var workbook = new XLWorkbook(XLEventTracking.Disabled))
+            //{
+            //    var dataSet = new DataSet();
+            //    foreach (var table in tableDict)
+            //    {
+            //        var records = table.Value.Select(x => x.Value).ToList();
+            //        CheckDuplicates(records);
+            //        dataSet.Tables.Add(records.ToDataTable(table.Key));
+            //    }
 
-                workbook.Worksheets.Add(dataSet);
-                workbook.SaveAs(output);
-            }
+            //    workbook.Worksheets.Add(dataSet);
+            //    workbook.SaveAs(output);
+            //}
 
             return 0;
         }
 
         public static int Diff(IEnumerable<string> inputs, string output)
         {
-            var datasets = new Dictionary<string, Dictionary<string, IList<IDictionary<string, object>>>>();
-            foreach (var input in inputs)
-            {
-                datasets.Add(input, input.GetData().ToExpandoProps());
-            }
+            //var datasets = new Dictionary<string, Dictionary<string, IList<IDictionary<string, object>>>>();
+            //foreach (var input in inputs)
+            //{
+            //    datasets.Add(input, input.GetData().ToExpandoProps());
+            //}
 
-            var compareLogic = new CompareLogic
-            {
-                Config = new ComparisonConfig
-                {
-                    MaxDifferences = int.MaxValue,
-                    IgnoreCollectionOrder = true,
-                    TreatStringEmptyAndNullTheSame = true,
-                    CaseSensitive = false
-                }
-            };
+            //var compareLogic = new CompareLogic
+            //{
+            //    Config = new ComparisonConfig
+            //    {
+            //        MaxDifferences = int.MaxValue,
+            //        IgnoreCollectionOrder = true,
+            //        TreatStringEmptyAndNullTheSame = true,
+            //        CaseSensitive = false
+            //    }
+            //};
 
-            // TODO: Handle more than 2 inputs?
-            var comparison = compareLogic.Compare(datasets.FirstOrDefault().Value, datasets.LastOrDefault().Value);
-            if (comparison.Differences.Count > 0)
-            {
-                Log.Warning(comparison.DifferencesString);
-            }
+            //// TODO: Handle more than 2 inputs?
+            //var comparison = compareLogic.Compare(datasets.FirstOrDefault().Value, datasets.LastOrDefault().Value);
+            //if (comparison.Differences.Count > 0)
+            //{
+            //    Log.Warning(comparison.DifferencesString);
+            //}
 
             return 0;
         }
 
-        private static void CheckDuplicates(IEnumerable<ExpandoObject> rows)
+        private static void CheckDuplicates(Worksheet sheet)
         {
-            var dupRows = rows.GroupBy(x => x.AllProps(), StringComparer.OrdinalIgnoreCase)?.Where(g => g.Count() > 1).ToList();
-            var dupKeys = rows.GroupBy(x => x.Id(), StringComparer.OrdinalIgnoreCase)?.Where(g => g.Count() > 1).ToList();
+            var dupKeys = sheet.GetDuplicates(x => x.Id);
             DumpDuplicates(dupKeys, "Keys");
+
+            var dupRows = sheet.GetDuplicates(x => x.FlattenValues());
             DumpDuplicates(dupRows, "Rows");
         }
 
-        private static void DumpDuplicates(List<IGrouping<string, ExpandoObject>> dups, string name)
+        private static void DumpDuplicates(List<IGrouping<string, Item>> dups, string name)
         {
             if (dups?.Count > 0)
             {
                 Log.Warning($"Duplicate {name} ({dups.Count}):");
-                foreach (var row in dups)
+                foreach (var dup in dups)
                 {
-                    Log.Warning($"\t{row.Key} ({row.Count()})");
+                    Log.Warning($"\t{dup.Key} ({dup.Count()})");
                 }
             }
         }
