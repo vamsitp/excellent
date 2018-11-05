@@ -153,14 +153,33 @@
 
         public static int Diff(IEnumerable<string> inputs, string output)
         {
+            var datasets = new Dictionary<string, Dictionary<string, List<dynamic>>>();
+            foreach (var input in inputs)
+            {
+                datasets.Add(input, input.GetData().ToExpandoDict());
+            }
+
             return 0;
         }
 
         private static void CheckDuplicates(IEnumerable<ExpandoObject> rows)
         {
-            var dupRows = rows.GroupBy(x => x.AllProps())?.Count(g => g.Count() > 1);
-            var dupKeys = rows.GroupBy(x => x.Id())?.Count(g => g.Count() > 1);
-            Log.Warning($"Duplicates: Key = {dupKeys ?? 0} | Values = {dupRows ?? 0}");
+            var dupRows = rows.GroupBy(x => x.AllProps(), StringComparer.OrdinalIgnoreCase)?.Where(g => g.Count() > 1).ToList();
+            var dupKeys = rows.GroupBy(x => x.Id(), StringComparer.OrdinalIgnoreCase)?.Where(g => g.Count() > 1).ToList();
+            DumpDuplicates(dupKeys, "Keys");
+            DumpDuplicates(dupRows, "Rows");
+        }
+
+        private static void DumpDuplicates(List<IGrouping<string, ExpandoObject>> dups, string name)
+        {
+            if (dups?.Count > 0)
+            {
+                Log.Warning($"Duplicate {name} ({dups.Count}):");
+                foreach (var row in dups)
+                {
+                    Log.Warning($"\t{row.Key} ({row.Count()})");
+                }
+            }
         }
     }
 }

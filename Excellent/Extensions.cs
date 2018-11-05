@@ -92,6 +92,7 @@
                         };
 
                         var result = reader.AsDataSet(options);
+                        result.DataSetName = input;
                         return result;
                     }
                 }
@@ -136,6 +137,41 @@
             }
 
             return null;
+        }
+
+        public static Dictionary<string, List<dynamic>> ToExpandoDict(this DataSet ds)
+        {
+            var expandoDict = new Dictionary<string, List<dynamic>>();
+            foreach (DataTable dt in ds.Tables)
+            {
+                var expandoList = dt.ToExpandoList();
+                expandoDict.Add(dt.TableName, expandoList);
+            }
+
+            return expandoDict;
+        }
+
+        public static List<dynamic> ToExpandoList(this DataTable dt)
+        {
+            var expandoList = new List<dynamic>();
+            foreach (DataRow row in dt.Rows)
+            {
+                var expandoDict = ToExpandoObject(dt, row);
+                expandoList.Add(expandoDict);
+            }
+
+            return expandoList;
+        }
+
+        public static IDictionary<string, object> ToExpandoObject(DataTable dt, DataRow row)
+        {
+            var expandoDict = new ExpandoObject() as IDictionary<string, object>;
+            foreach (DataColumn col in dt.Columns)
+            {
+                expandoDict.Add(col.ToString(), row[col.ColumnName].ToString());
+            }
+
+            return expandoDict;
         }
     }
 }
