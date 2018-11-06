@@ -20,7 +20,7 @@
         public static int Transform(string input, string output, string outputFormat)
         {
             Log.Information($"Processing '{input}'");
-            var workbook = new Workbook(input.GetData());
+            var workbook = new Workbook(input.GetExcelData());
             Log.Information($"Found {workbook.Sheets.Count} sheets\n");
 
             for (var i = 0; i < workbook.Sheets.Count; i++)
@@ -63,7 +63,7 @@
             var sheets = new ConcurrentDictionary<string, Worksheet>();
             foreach (var input in inputs)
             {
-                var workbook = new Workbook(input.GetData());
+                var workbook = new Workbook(input.GetExcelData());
                 var sheetsCount = workbook.Sheets.Count;
                 for (var i = 0; i < sheetsCount; i++)
                 {
@@ -132,12 +132,20 @@
             return 0;
         }
 
-        public static int Diff(IEnumerable<string> inputs, string output)
+        public static int Diff(IEnumerable<string> inputs, string output, string sqlConn)
         {
             var workbooks = new List<Workbook>();
-            foreach (var input in inputs)
+            if (!string.IsNullOrWhiteSpace(sqlConn))
             {
-                workbooks.Add(new Workbook(input.GetData()));
+                workbooks.Add(new Workbook(inputs.FirstOrDefault().GetExcelData()));
+                workbooks.Add(new Workbook(inputs.LastOrDefault().GetSqlData(sqlConn)));
+            }
+            else
+            {
+                foreach (var input in inputs)
+                {
+                    workbooks.Add(new Workbook(input.GetExcelData()));
+                }
             }
 
             //// TODO: Handle more than 2 inputs?

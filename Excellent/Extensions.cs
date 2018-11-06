@@ -2,20 +2,38 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Collections.Specialized;
-    using System.Configuration;
     using System.Data;
+    using System.Data.SqlClient;
     using System.Dynamic;
     using System.IO;
     using System.Linq;
+    using System.Reflection;
 
     using ExcelDataReader;
 
-    using Newtonsoft.Json;
-
     public static class Extensions
     {
-        public static DataSet GetData(this string input)
+        public static DataSet GetSqlData(this string input, string connString)
+        {
+            try
+            {
+                var queryString = File.Exists(input.GetFullPath()) ? File.ReadAllText(input.GetFullPath()) : input;
+                using (var adapter = new SqlDataAdapter(queryString, connString))
+                {
+                    var resultSet = new DataSet();
+                    adapter.Fill(resultSet);
+                    return resultSet;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+
+            return null;
+        }
+
+        public static DataSet GetExcelData(this string input)
         {
             try
             {
@@ -99,6 +117,26 @@
             }
 
             return (T)expandoDict;
+        }
+
+        public static bool ContainsIgnoreCase(this string item, string subString)
+        {
+            return item.IndexOf(subString, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        public static string GetFullPath(this string file)
+        {
+            try
+            {
+                var value = Path.IsPathRooted(file) ? file : Path.Combine(Path.GetDirectoryName(new Uri(Assembly.GetCallingAssembly().CodeBase).LocalPath), file);
+                return value;
+            }
+            catch
+            {
+                // Do nothing
+            }
+
+            return file;
         }
     }
 }

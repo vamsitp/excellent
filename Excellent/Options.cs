@@ -65,6 +65,9 @@
         [Option('i', "input", Required = true, HelpText = "Input files to be diff'd.")]
         public IEnumerable<string> Inputs { get; set; }
 
+        [Option('c', "sqlconn", Required = true, HelpText = "Sql Server Connection-string).")]
+        public string SqlConnection { get; set; }
+
         [Usage(ApplicationAlias = "excellent.exe")]
 
         public static IEnumerable<Example> Examples
@@ -72,6 +75,7 @@
             get
             {
                 yield return new Example("\nDIFF FILES", new[] { UnParserSettings.WithGroupSwitchesOnly(), UnParserSettings.WithUseEqualTokenOnly() }, new DiffOptions { Inputs = new[] { "Localizations_1.xlsx", "Localizations_2.xlsx" } });
+                yield return new Example("\nDIFF FILES", new[] { UnParserSettings.WithGroupSwitchesOnly(), UnParserSettings.WithUseEqualTokenOnly() }, new DiffOptions { Inputs = new[] { "Localizations_1.xlsx", "Localization_Table.sql" }, SqlConnection = "Server=tcp:[serverName].database.windows.net;Database=myDataBase;User ID=[LoginForDb]@[serverName];Password=myPassword;Trusted_Connection=False;Encrypt=True;" });
             }
         }
     }

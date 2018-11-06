@@ -24,9 +24,6 @@
     <PackageReference Include="SmartFormat.NET" Version="2.3.0" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="TestData\" />
-  </ItemGroup>
-  <ItemGroup>
     <None Update="TestData\Localizations_1.xlsx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
