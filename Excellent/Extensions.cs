@@ -10,6 +10,7 @@
     using System.Reflection;
 
     using ExcelDataReader;
+    using Serilog;
 
     public static class Extensions
     {
@@ -27,7 +28,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Log.Error(ex, ex.Message);
             }
 
             return null;
