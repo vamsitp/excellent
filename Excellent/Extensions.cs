@@ -13,57 +13,8 @@
 
     using Newtonsoft.Json;
 
-    using SmartFormat;
-
     public static class Extensions
     {
-        public static string Id(this object obj)
-        {
-            var id = Smart.Format(ConfigurationManager.AppSettings["PrimaryKey"], obj);
-            return id;
-        }
-
-        public static string AllProps(this ExpandoObject obj, string delimiter = " | ", bool namesOnly = false)
-        {
-            var format = string.Join(delimiter, obj.AllPropsList(namesOnly));
-            var result = format.Trim(delimiter.Trim().ToCharArray());
-            return result;
-        }
-
-        public static List<object> AllPropsList(this ExpandoObject obj, bool namesOnly = false)
-        {
-            var props = new List<object>();
-            var dict = obj as IDictionary<string, object>;
-            if (dict == null)
-            {
-                dict = obj.GetType().GetProperties().ToDictionary(x => x.Name, x => x.GetValue(obj));
-            }
-
-            foreach (var prop in dict)
-            {
-                props.Add(namesOnly ? prop.Key : prop.Value);
-            }
-
-            return props;
-        }
-
-        public static IEnumerable<T> GetRows<T>(this string input, int sheetIndex = 0)
-        {
-            var dataSet = GetData(input);
-            return GetRows<T>(dataSet, sheetIndex);
-        }
-
-        public static IEnumerable<T> GetRows<T>(this DataSet dataSet, int sheetIndex)
-        {
-            var dataTable = dataSet?.Tables[sheetIndex];
-            return GetRows<T>(dataTable);
-        }
-
-        public static IEnumerable<T> GetRows<T>(this DataTable dataTable)
-        {
-            return GetList<T>(dataTable);
-        }
-
         public static DataSet GetData(this string input)
         {
             try
@@ -105,19 +56,6 @@
             return null;
         }
 
-        public static List<T> GetList<T>(this DataTable dt)
-        {
-            var json = JsonConvert.SerializeObject(dt);
-            var escs = (ConfigurationManager.GetSection("escapeChars") as NameValueCollection ?? throw new ConfigurationErrorsException("escapeChars"));
-            foreach (var esc in escs.AllKeys)
-            {
-                json = json.Replace(esc, escs[esc]);
-            }
-
-            var result = JsonConvert.DeserializeObject<List<T>>(json);
-            return result;
-        }
-
         public static DataTable ToDataTable(this IList<ExpandoObject> items, string name)
         {
             if (items?.Count > 0)
@@ -139,44 +77,6 @@
             return null;
         }
 
-        public static Dictionary<string, IList<IDictionary<string, object>>> ToExpandoProps(this DataSet ds)
-        {
-            var expandoDict = new Dictionary<string, IList<IDictionary<string, object>>>();
-            foreach (DataTable dt in ds.Tables)
-            {
-                var expandoList = dt.GetList<IDictionary<string, object>>();
-                expandoDict.Add(dt.TableName, expandoList);
-            }
-
-            return expandoDict;
-        }
-
-        public static Dictionary<string, List<T>> ToDictionary<T>(this DataSet ds)
-            where T : IDictionary<string, object>
-        {
-            var expandoDict = new Dictionary<string, List<T>>();
-            foreach (DataTable dt in ds.Tables)
-            {
-                var expandoList = dt.ToDictionaryList<T>();
-                expandoDict.Add(dt.TableName, expandoList);
-            }
-
-            return expandoDict;
-        }
-
-        public static List<T> ToDictionaryList<T>(this DataTable dt)
-            where T : IDictionary<string, object>
-        {
-            var expandoList = new List<T>();
-            foreach (DataRow row in dt.Rows)
-            {
-                var expandoDict = row.ToDictionary<T>();
-                expandoList.Add(expandoDict);
-            }
-
-            return expandoList;
-        }
-
         public static T ToDictionary<T>(this DataRow row)
             where T : IDictionary<string, object>
         {
@@ -187,31 +87,6 @@
             }
 
             return (T)expandoDict;
-        }
-
-        public static bool TryAdd(this DataTableCollection dtc, DataTable dt)
-        {
-            if (dtc.Contains(dt.TableName))
-            {
-                return false;
-            }
-
-            dtc.Add(dt);
-            return true;
-        }
-
-        public static bool AddOrUpdate(this DataRowCollection drc, object key, DataRow addValue, Func<string, DataRow, DataRow> updateValueFactory)
-        {
-            var dr = drc.Find(key);
-            if (dr != null)
-            {
-                dr.Delete();
-                drc.Add(updateValueFactory);
-                return false;
-            }
-
-            drc.Add(addValue);
-            return true;
         }
     }
 }

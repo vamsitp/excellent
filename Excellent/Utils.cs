@@ -24,12 +24,11 @@
         {
             Log.Information($"Processing '{input}'");
             var workbook = new Workbook(input.GetData());
-            var sheetsCount = workbook.Sheets.Count;
-            Log.Information($"Found {sheetsCount} sheets\n");
+            Log.Information($"Found {workbook.Sheets.Count} sheets\n");
 
-            for (var i = 0; i < sheetsCount; i++)
+            for (var i = 0; i < workbook.Sheets.Count; i++)
             {
-                var sheet = workbook?.Sheets[i];
+                var sheet = workbook.Sheets[i];
                 Log.Information($"Processing '{sheet.Name}' sheet");
                 var items = sheet.Items;
                 if (items?.Count > 0)
@@ -63,43 +62,42 @@
         public static int Merge(IEnumerable<string> inputs, string output, bool keepRight, bool keepLeft)
         {
             Log.Information($"Processing '{string.Join(", ", inputs)}'");
-            var tableDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, ExpandoObject>>();
+            var sheets = new ConcurrentDictionary<string, Worksheet>();
             foreach (var input in inputs)
             {
-                var dataSet = input.GetData();
-                var sheetsCount = dataSet?.Tables?.Count;
+                var workbook = new Workbook(input.GetData());
+                var sheetsCount = workbook.Sheets.Count;
                 for (var i = 0; i < sheetsCount; i++)
                 {
-                    var table = dataSet?.Tables[i];
-                    var name = table.TableName;
-                    var isNewTable = tableDict.TryAdd(name, new ConcurrentDictionary<string, ExpandoObject>());
-                    var rowsDict = tableDict[name];
-                    Log.Information($"Processing '{name}' sheet (New: {isNewTable})");
-                    var rows = table.GetRows<ExpandoObject>().ToList();
-                    if (rows?.Count > 0)
+                    var workbookSheet = workbook.Sheets[i];
+                    var isNew = sheets.TryAdd(workbookSheet.Name, workbookSheet);
+                    var sheet = sheets[workbookSheet.Name];
+                    Log.Information($"Processing '{workbookSheet.Name}' sheet (New: {isNew})");
+                    var items = sheet.Items;
+                    if (items?.Count > 0)
                     {
-                        foreach (var row in rows)
+                        foreach (var item in items)
                         {
-                            var id = row.Id();
+                            var id = item.Id;
                             object resultRow = null;
                             if (keepRight)
                             {
-                                resultRow = rowsDict.AddOrUpdate(id, row, (key, existing) => row);
+                                resultRow = sheet.AddOrUpdate(id, item, (key, existing) => item);
                             }
                             else if (keepLeft)
                             {
-                                resultRow = rowsDict.AddOrUpdate(id, row, (key, existing) => existing);
+                                resultRow = sheet.AddOrUpdate(id, item, (key, existing) => existing);
                             }
                             else
                             {
-                                var rowExists = rowsDict.TryGetValue(id, out var existingRow);
+                                var rowExists = sheet.ContainsItem(id);
                                 if (rowExists)
                                 {
-                                    var newProps = row.AllProps();
-                                    var existingProps = rowsDict[row.Id()].AllProps();
-                                    if (existingProps.Equals(newProps))
+                                    var newProps = item.FlattenValues();
+                                    var existingProps = sheet.GetItem(item.Id).FlattenValues();
+                                    if (existingProps.Equals(newProps, StringComparison.OrdinalIgnoreCase))
                                     {
-                                        resultRow = row;
+                                        resultRow = item;
                                     }
                                     else
                                     {
@@ -108,11 +106,11 @@
                                         Log.Information(choice.Key.ToString());
                                         if (choice.Key == ConsoleKey.R)
                                         {
-                                            resultRow = rowsDict.AddOrUpdate(id, row, (key, existing) => row);
+                                            resultRow = sheet.AddOrUpdate(id, item, (key, existing) => item);
                                         }
                                         else if (choice.Key == ConsoleKey.L)
                                         {
-                                            resultRow = rowsDict.AddOrUpdate(id, row, (key, existing) => existing);
+                                            resultRow = sheet.AddOrUpdate(id, item, (key, existing) => existing);
                                         }
                                         else
                                         {
@@ -122,10 +120,7 @@
                                 }
                                 else
                                 {
-                                    if (rowsDict.TryAdd(id, row))
-                                    {
-                                        resultRow = row;
-                                    }
+                                    resultRow = sheet.GetOrAdd(id, item);
                                 }
                             }
 
@@ -135,19 +130,28 @@
                 }
             }
 
-            //using (var workbook = new XLWorkbook(XLEventTracking.Disabled))
-            //{
-            //    var dataSet = new DataSet();
-            //    foreach (var table in tableDict)
-            //    {
-            //        var records = table.Value.Select(x => x.Value).ToList();
-            //        CheckDuplicates(records);
-            //        dataSet.Tables.Add(records.ToDataTable(table.Key));
-            //    }
+            using (var workbook = new XLWorkbook(XLEventTracking.Disabled))
+            {
+                foreach (var sheet in sheets)
+                {
+                    var val = sheet.Value;
+                    var ws = workbook.AddWorksheet(val.Name);
+                    var cols = val.Items.FirstOrDefault().Props.Keys;
+                    var header = ws.Cell(1, 1).InsertData(cols, true);
+                    ws.Cell(2, 1).InsertData(val.ToDataTable());
+                    ws.RangeUsed().SetAutoFilter();
+                    ws.Style.Font.SetFontName("Segoe UI");
+                    ws.Style.Font.SetFontSize(10);
+                    header.Style.Font.Bold = true;
+                    ws.Column(1).AdjustToContents();
+                    ws.Column(1).AddConditionalFormat().WhenIsDuplicate().Font.SetFontColor(XLColor.Red);
+                    ws.Column(2).AddConditionalFormat().WhenIsDuplicate().Font.SetFontColor(XLColor.BrickRed);
+                    ws.Cell(1, 2).SetActive();
+                    ws.SheetView.Freeze(1, 2);
+                }
 
-            //    workbook.Worksheets.Add(dataSet);
-            //    workbook.SaveAs(output);
-            //}
+                workbook.SaveAs(output);
+            }
 
             return 0;
         }
@@ -183,10 +187,10 @@
 
         private static void CheckDuplicates(Worksheet sheet)
         {
-            var dupKeys = sheet.GetDuplicates(x => x.Id);
+            var dupKeys = sheet.GetDuplicateItems(x => x.Id);
             DumpDuplicates(dupKeys, "Keys");
 
-            var dupRows = sheet.GetDuplicates(x => x.FlattenValues());
+            var dupRows = sheet.GetDuplicateItems(x => x.FlattenValues());
             DumpDuplicates(dupRows, "Rows");
         }
 

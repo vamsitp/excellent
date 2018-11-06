@@ -20,6 +20,26 @@
         public string Name { get; set; }
 
         public IList<Worksheet> Sheets { get; set; }
+
+        public bool ContainsSheet(string name, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        {
+            return this.ContainsSheet(x => x.Name.Equals(name, comparison));
+        }
+
+        public bool ContainsSheet(Func<Worksheet, bool> condition)
+        {
+            return this.Sheets.Any(condition);
+        }
+
+        public Worksheet GetSheet(string name, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        {
+            return this.Sheets.SingleOrDefault(x => x.Name.Equals(name, comparison));
+        }
+
+        public IEnumerable<Worksheet> GetSheets(Func<Worksheet, bool> condition)
+        {
+            return this.Sheets.Where(condition);
+        }
     }
 
     public class Worksheet
@@ -34,10 +54,93 @@
 
         public IList<Item> Items { get; set; }
 
-        public List<IGrouping<string, Item>> GetDuplicates(Func<Item, string> groupSelector)
+        public bool ContainsItem(string id, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        {
+            return this.ContainsItem(x => x.Id.Equals(id, comparison));
+        }
+
+        public bool ContainsItem(Func<Item, bool> condition)
+        {
+            return this.Items.Any(condition);
+        }
+
+        public Item GetItem(string id, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        {
+            return this.GetItem(x => x.Id.Equals(id, comparison));
+        }
+
+        public Item GetItem(Func<Item, bool> condition)
+        {
+            return this.Items.FirstOrDefault(condition); // TOEDO: SingleOrDefault
+        }
+
+        public IEnumerable<Item> GetItems(Func<Item, bool> condition)
+        {
+            return this.Items.Where(condition);
+        }
+
+        public List<IGrouping<string, Item>> GetDuplicateItems(Func<Item, string> groupSelector)
         {
             var dups = this.Items.GroupBy(groupSelector, StringComparer.OrdinalIgnoreCase)?.Where(g => g.Count() > 1).ToList();
             return dups;
+        }
+
+        public bool TryAdd(Item item)
+        {
+            if (this.ContainsItem(item.Id))
+            {
+                return false;
+            }
+
+            this.Items.Add(item);
+            return true;
+        }
+
+        public Item GetOrAdd(string id, Item addValue)
+        {
+            var items = this.GetItems(x => x.Id.Equals(id, StringComparison.Ordinal)).ToList();
+            if (items?.Count > 0)
+            {
+                return items.SingleOrDefault();
+            }
+
+            this.Items.Add(addValue);
+            return addValue;
+        }
+
+        public bool AddOrUpdate(string id, Item addValue, Func<string, Item, Item> updateValueFactory)
+        {
+            // TODO: GetItem
+            var items = this.GetItems(x => x.Id.Equals(id, StringComparison.Ordinal)).ToList();
+            if (items?.Count > 0)
+            {
+                items.ForEach(x => x.Props = updateValueFactory(x.Id, x).Props);
+                return false;
+            }
+
+            this.Items.Add(addValue);
+            return true;
+        }
+
+        public DataTable ToDataTable()
+        {
+            if (this.Items?.Count > 0)
+            {
+                var dt = new DataTable(this.Name);
+                foreach (var key in this.Items.FirstOrDefault().Props.Keys)
+                {
+                    dt.Columns.Add(key);
+                }
+
+                foreach (var item in this.Items)
+                {
+                    dt.Rows.Add(item.Props.Values.ToArray());
+                }
+
+                return dt;
+            }
+
+            return null;
         }
     }
 
