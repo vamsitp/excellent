@@ -69,8 +69,8 @@
                     var workbookSheet = workbook.Sheets[i];
                     var isNew = sheets.TryAdd(workbookSheet.Name, workbookSheet);
                     var sheet = sheets[workbookSheet.Name];
-                    Log.Information($"Processing '{workbookSheet.Name}' sheet (New: {isNew})");
-                    var items = sheet.Items;
+                    Log.Information($"Processing '{Path.GetFileNameWithoutExtension(input)}' - '{workbookSheet.Name}' sheet (New: {isNew})");
+                    var items = sheet.Items.Union(workbookSheet.Items).ToList();
                     if (items?.Count > 0)
                     {
                         foreach (var item in items)
@@ -161,12 +161,12 @@
 
                 if (firstOnlyItems?.Count > 0)
                 {
-                    Log.Warning($"Items in '{Path.GetFileNameWithoutExtension(first.Name)}' not in '{Path.GetFileNameWithoutExtension(last.Name)}': \n\t{string.Join(Environment.NewLine + "\t", firstOnlyItems)}\n");
+                    Log.Warning($"{firstOnlyItems?.Count} items in '{Path.GetFileNameWithoutExtension(first.Name)}' not in '{Path.GetFileNameWithoutExtension(last.Name)}': \n\t{string.Join(Environment.NewLine + "\t", firstOnlyItems)}\n");
                 }
 
                 if (lastOnlyItems?.Count > 0)
                 {
-                    Log.Warning($"Items in '{Path.GetFileNameWithoutExtension(last.Name)}' not in '{Path.GetFileNameWithoutExtension(first.Name)}': \n\t{string.Join(Environment.NewLine + "\t", lastOnlyItems)}\n");
+                    Log.Warning($"{lastOnlyItems?.Count} items in '{Path.GetFileNameWithoutExtension(last.Name)}' not in '{Path.GetFileNameWithoutExtension(first.Name)}': \n\t{string.Join(Environment.NewLine + "\t", lastOnlyItems)}\n");
                 }
             }
 
