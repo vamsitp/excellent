@@ -4,8 +4,8 @@
 
 ##### SAMPLE USAGE:
 ```batch
-excellent -transform -i "TestData\Localizations_1.xlsx" -o "Localizations_1.sql"
-excellent -merge -i "TestData\Localizations_1.xlsx" "TestData\Localizations_2.xlsx"
+excellent -transform -i "TestData\Localizations_1.xlsx" [-o "Localizations_1.sql"] [-f "EXEC [dbo].[usp_InsertLocalizationData] @ResourceId = '{ResourceId}', @English = '{English}'"]
+excellent -merge -i "TestData\Localizations_1.xlsx" "TestData\Localizations_2.xlsx" [-o Localizations_Merged.xlsx]
 excellent -diff -i "TestData\Localizations_1.xlsx" "TestData\Localizations_2.xlsx"
 ```
 ---

@@ -36,7 +36,8 @@
                     result.AppendLine($"-- {sheet.Name}");
                     foreach (var row in items)
                     {
-                        var val = Smart.Format(outputFormat, row);
+                        var val = Smart.Format(outputFormat, row.Props);
+                        Debug.Assert(!val.Equals(outputFormat), $"'{Path.GetFileNameWithoutExtension(workbook.Name)} - {sheet.Name}''s '{row.Id}' row could not be transformed!");
                         result.AppendLine(val);
                     }
 

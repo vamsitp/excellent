@@ -20,6 +20,9 @@
         [Option('i', "input", Required = true, HelpText = "Input file to be transformed.")]
         public string Input { get; set; }
 
+        [Option('f', "format", Required = true, HelpText = "Transformation format (using Smart-Format).")]
+        public string Format { get; set; }
+
         [Usage(ApplicationAlias = "excellent.exe")]
 
         public static IEnumerable<Example> Examples
@@ -28,6 +31,7 @@
             {
                 yield return new Example("\n\nTRANSFORMATION - DEFAULT OUTPUT", new TransformOptions { Input = "Localizations.xlsx" });
                 yield return new Example("\n\nTRANSFORMATION - SPECIFIC OUTPUT", new TransformOptions { Input = "Localizations.xlsx", Output = "Localizations.sql" });
+                yield return new Example("\n\nTRANSFORMATION - SPECIFIC FORMAT", new TransformOptions { Input = "Localizations.xlsx", Output = "Localizations.sql", Format = "EXEC [dbo].[usp_InsertLocalizationData] @ResourceId = '{ResourceId}', @English = '{English}'" });
             }
         }
     }
@@ -50,7 +54,7 @@
         {
             get
             {
-                yield return new Example("\nMERGE FILES", UnParserSettings.WithGroupSwitchesOnly(), new MergeOptions { Inputs = new[] { "File1.xlsx", "File2.xlsx" } });
+                yield return new Example("\nMERGE FILES", UnParserSettings.WithGroupSwitchesOnly(), new MergeOptions { Inputs = new[] { "Localizations_1.xlsx", "Localizations_2.xlsx" } });
             }
         }
     }
@@ -67,7 +71,7 @@
         {
             get
             {
-                yield return new Example("\nDIFF FILES", new[] { UnParserSettings.WithGroupSwitchesOnly(), UnParserSettings.WithUseEqualTokenOnly() }, new DiffOptions { Inputs = new[] { "File1.xlsx", "File2.xlsx" } });
+                yield return new Example("\nDIFF FILES", new[] { UnParserSettings.WithGroupSwitchesOnly(), UnParserSettings.WithUseEqualTokenOnly() }, new DiffOptions { Inputs = new[] { "Localizations_1.xlsx", "Localizations_2.xlsx" } });
             }
         }
     }
