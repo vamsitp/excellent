@@ -3,16 +3,10 @@
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
-    using System.Data;
     using System.Diagnostics;
-    using System.Dynamic;
     using System.IO;
     using System.Linq;
     using System.Text;
-
-    using ClosedXML.Excel;
-
-    using KellermanSoftware.CompareNetObjects;
 
     using Serilog;
 
@@ -136,29 +130,42 @@
 
         public static int Diff(IEnumerable<string> inputs, string output)
         {
-            //var datasets = new Dictionary<string, Dictionary<string, IList<IDictionary<string, object>>>>();
-            //foreach (var input in inputs)
-            //{
-            //    datasets.Add(input, input.GetData().ToExpandoProps());
-            //}
-
-            //var compareLogic = new CompareLogic
-            //{
-            //    Config = new ComparisonConfig
-            //    {
-            //        MaxDifferences = int.MaxValue,
-            //        IgnoreCollectionOrder = true,
-            //        TreatStringEmptyAndNullTheSame = true,
-            //        CaseSensitive = false
-            //    }
-            //};
+            var workbooks = new List<Workbook>();
+            foreach (var input in inputs)
+            {
+                workbooks.Add(new Workbook(input.GetData()));
+            }
 
             //// TODO: Handle more than 2 inputs?
-            //var comparison = compareLogic.Compare(datasets.FirstOrDefault().Value, datasets.LastOrDefault().Value);
-            //if (comparison.Differences.Count > 0)
-            //{
-            //    Log.Warning(comparison.DifferencesString);
-            //}
+            var first = workbooks.FirstOrDefault();
+            var last = workbooks.LastOrDefault();
+            var firstSheets = first.Sheets;
+            var lastSheets = last.Sheets;
+            for (var i = 0; i < firstSheets.Count; i++)
+            {
+                var firstSheet = firstSheets[i];
+                var lastSheet = lastSheets[i];
+
+                var firstSheetItems = firstSheets[i].Items;
+                var lastSheetItems = lastSheets[i].Items;
+
+                var firstOnlyItems = firstSheetItems.Except(lastSheetItems).Select(x => x.FlattenValues()).ToList();
+                var lastOnlyItems = lastSheetItems.Except(firstSheetItems).Select(x => x.FlattenValues()).ToList();
+                var matches = lastSheetItems.Intersect(firstSheetItems).ToList();
+                Log.Warning($"'{Path.GetFileNameWithoutExtension(first.Name)}' - '{firstSheet.Name}': {firstSheetItems.Count}");
+                Log.Warning($"'{Path.GetFileNameWithoutExtension(last.Name)}' - '{lastSheet.Name}': {lastSheetItems.Count}");
+                Log.Warning($"Matches = {matches.Count}");
+
+                if (firstOnlyItems?.Count > 0)
+                {
+                    Log.Warning($"Items in '{Path.GetFileNameWithoutExtension(first.Name)}' not in '{Path.GetFileNameWithoutExtension(last.Name)}': \n\t{string.Join(Environment.NewLine + "\t", firstOnlyItems)}\n");
+                }
+
+                if (lastOnlyItems?.Count > 0)
+                {
+                    Log.Warning($"Items in '{Path.GetFileNameWithoutExtension(last.Name)}' not in '{Path.GetFileNameWithoutExtension(first.Name)}': \n\t{string.Join(Environment.NewLine + "\t", lastOnlyItems)}\n");
+                }
+            }
 
             return 0;
         }

@@ -241,5 +241,21 @@
             var result = string.Join(delimiter, this.Props.Select(p => p.Key));
             return result;
         }
+
+        public override bool Equals(object obj)
+        {
+            var item = obj as Item;
+            return item != null &&
+                   this.FlattenNames().Equals(item.FlattenNames(), StringComparison.OrdinalIgnoreCase) &&
+                   this.FlattenValues().Equals(item.FlattenValues(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = -681290639;
+            hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(this.FlattenNames());
+            hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(this.FlattenValues());
+            return hashCode;
+        }
     }
 }

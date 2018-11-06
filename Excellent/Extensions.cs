@@ -88,5 +88,17 @@
 
             return (T)expandoDict;
         }
+
+        public static T ToDictionary<T>(this Item item)
+            where T : IDictionary<string, object>
+        {
+            var expandoDict = new ExpandoObject() as IDictionary<string, object>;
+            foreach (var prop in item.Props.Keys)
+            {
+                expandoDict.Add(prop, item.Props[prop]);
+            }
+
+            return (T)expandoDict;
+        }
     }
 }
