@@ -130,29 +130,7 @@
                 }
             }
 
-            using (var workbook = new XLWorkbook(XLEventTracking.Disabled))
-            {
-                foreach (var sheet in sheets)
-                {
-                    var val = sheet.Value;
-                    var ws = workbook.AddWorksheet(val.Name);
-                    var cols = val.Items.FirstOrDefault().Props.Keys;
-                    var header = ws.Cell(1, 1).InsertData(cols, true);
-                    ws.Cell(2, 1).InsertData(val.ToDataTable());
-                    ws.RangeUsed().SetAutoFilter();
-                    ws.Style.Font.SetFontName("Segoe UI");
-                    ws.Style.Font.SetFontSize(10);
-                    header.Style.Font.Bold = true;
-                    ws.Column(1).AdjustToContents();
-                    ws.Column(1).AddConditionalFormat().WhenIsDuplicate().Font.SetFontColor(XLColor.Red);
-                    ws.Column(2).AddConditionalFormat().WhenIsDuplicate().Font.SetFontColor(XLColor.BrickRed);
-                    ws.Cell(1, 2).SetActive();
-                    ws.SheetView.Freeze(1, 2);
-                }
-
-                workbook.SaveAs(output);
-            }
-
+            Workbook.Save(output, sheets.Values.ToList());
             return 0;
         }
 

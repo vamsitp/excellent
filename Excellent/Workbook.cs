@@ -7,6 +7,8 @@
     using System.Dynamic;
     using System.Linq;
 
+    using ClosedXML.Excel;
+
     using SmartFormat;
 
     public class Workbook
@@ -40,10 +42,37 @@
         {
             return this.Sheets.Where(condition);
         }
+
+        public bool Save(string output)
+        {
+            return Save(output, this);
+        }
+
+        public static bool Save(string output, Workbook workbook)
+        {
+            return Save(output, workbook.Sheets);
+        }
+
+        public static bool Save(string output, IList<Worksheet> sheets)
+        {
+            using (var wb = new XLWorkbook(XLEventTracking.Disabled))
+            {
+                foreach (var sheet in sheets)
+                {
+                    sheet.AddToWorkbook(wb);
+                }
+
+                wb.SaveAs(output);
+            }
+
+            return true;
+        }
     }
 
     public class Worksheet
     {
+        private const string FontFamily = "Segoe UI";
+
         public Worksheet(DataTable dataTable)
         {
             this.Name = dataTable.TableName;
@@ -141,6 +170,24 @@
             }
 
             return null;
+        }
+
+        public IXLWorksheet AddToWorkbook(IXLWorkbook workbook)
+        {
+            var ws = workbook.AddWorksheet(this.Name);
+            var cols = this.Items.FirstOrDefault().Props.Keys;
+            var header = ws.Cell(1, 1).InsertData(cols, true);
+            ws.Cell(2, 1).InsertData(this.ToDataTable());
+            ws.RangeUsed().SetAutoFilter();
+            ws.Style.Font.SetFontName(FontFamily);
+            ws.Style.Font.SetFontSize(10);
+            header.Style.Font.Bold = true;
+            ws.Column(1).AdjustToContents();
+            ws.Column(1).AddConditionalFormat().WhenIsDuplicate().Font.SetFontColor(XLColor.Red);
+            ws.Column(2).AddConditionalFormat().WhenIsDuplicate().Font.SetFontColor(XLColor.BrickRed);
+            ws.Cell(1, 2).SetActive();
+            ws.SheetView.Freeze(1, 2);
+            return ws;
         }
     }
 
