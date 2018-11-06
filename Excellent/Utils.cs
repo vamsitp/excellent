@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Configuration;
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
@@ -14,6 +15,8 @@
 
     public static class Utils
     {
+        public readonly static StringComparison IgnoreCase = bool.TryParse(ConfigurationManager.AppSettings[nameof(IgnoreCase)], out var ignoreCase) && ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
         public static int Transform(string input, string output, string outputFormat)
         {
             Log.Information($"Processing '{input}'");
@@ -89,7 +92,7 @@
                                 {
                                     var newProps = item.FlattenValues();
                                     var existingProps = sheet.GetItem(item.Id).FlattenValues();
-                                    if (existingProps.Equals(newProps, StringComparison.OrdinalIgnoreCase))
+                                    if (existingProps.Equals(newProps, Utils.IgnoreCase))
                                     {
                                         resultRow = item;
                                     }

@@ -16,7 +16,7 @@
 
     internal class Program
     {
-        private readonly static string OutputFormat = ConfigurationManager.AppSettings["TransformFormat"];
+        private readonly static string TransformFormat = ConfigurationManager.AppSettings[nameof(TransformFormat)];
 
         private static void Main(string[] args)
         {
@@ -24,7 +24,7 @@
             SetSmartFormatting();
             var result = Parser.Default.ParseArguments<TransformOptions, MergeOptions, DiffOptions>(args)
                 .MapResult(
-                (TransformOptions opts) => Utils.Transform(opts.Input, !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (Path.GetFileNameWithoutExtension(opts.Input) + ".txt"), OutputFormat),
+                (TransformOptions opts) => Utils.Transform(opts.Input, !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (Path.GetFileNameWithoutExtension(opts.Input) + ".txt"), TransformFormat),
                 (MergeOptions opts) => Utils.Merge(opts.Inputs, !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (string.Join("_", opts.Inputs.Select(Path.GetFileNameWithoutExtension)) + "_Merged.xlsx"), opts.KeepRight, opts.KeepLeft),
                 (DiffOptions opts) => Utils.Diff(opts.Inputs, opts.Output), errs => HandleParseErrors(errs?.ToList()));
             if (result == 0)

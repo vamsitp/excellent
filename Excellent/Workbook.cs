@@ -23,9 +23,9 @@
 
         public IList<Worksheet> Sheets { get; set; }
 
-        public bool ContainsSheet(string name, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        public bool ContainsSheet(string name)
         {
-            return this.ContainsSheet(x => x.Name.Equals(name, comparison));
+            return this.ContainsSheet(x => x.Name.Equals(name, Utils.IgnoreCase));
         }
 
         public bool ContainsSheet(Func<Worksheet, bool> condition)
@@ -33,9 +33,9 @@
             return this.Sheets.Any(condition);
         }
 
-        public Worksheet GetSheet(string name, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        public Worksheet GetSheet(string name)
         {
-            return this.Sheets.SingleOrDefault(x => x.Name.Equals(name, comparison));
+            return this.Sheets.SingleOrDefault(x => x.Name.Equals(name, Utils.IgnoreCase));
         }
 
         public IEnumerable<Worksheet> GetSheets(Func<Worksheet, bool> condition)
@@ -83,9 +83,9 @@
 
         public IList<Item> Items { get; set; }
 
-        public bool ContainsItem(string id, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        public bool ContainsItem(string id)
         {
-            return this.ContainsItem(x => x.Id.Equals(id, comparison));
+            return this.ContainsItem(x => x.Id.Equals(id, Utils.IgnoreCase));
         }
 
         public bool ContainsItem(Func<Item, bool> condition)
@@ -93,9 +93,9 @@
             return this.Items.Any(condition);
         }
 
-        public Item GetItem(string id, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        public Item GetItem(string id)
         {
-            return this.GetItem(x => x.Id.Equals(id, comparison));
+            return this.GetItem(x => x.Id.Equals(id, Utils.IgnoreCase));
         }
 
         public Item GetItem(Func<Item, bool> condition)
@@ -110,7 +110,8 @@
 
         public List<IGrouping<string, Item>> GetDuplicateItems(Func<Item, string> groupSelector)
         {
-            var dups = this.Items.GroupBy(groupSelector, StringComparer.OrdinalIgnoreCase)?.Where(g => g.Count() > 1).ToList();
+            var comparer = Utils.IgnoreCase == StringComparison.OrdinalIgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+            var dups = this.Items.GroupBy(groupSelector, comparer)?.Where(g => g.Count() > 1).ToList();
             return dups;
         }
 
@@ -127,7 +128,7 @@
 
         public Item GetOrAdd(string id, Item addValue)
         {
-            var items = this.GetItems(x => x.Id.Equals(id, StringComparison.Ordinal)).ToList();
+            var items = this.GetItems(x => x.Id.Equals(id, Utils.IgnoreCase)).ToList();
             if (items?.Count > 0)
             {
                 return items.SingleOrDefault();
@@ -140,7 +141,7 @@
         public bool AddOrUpdate(string id, Item addValue, Func<string, Item, Item> updateValueFactory)
         {
             // TODO: GetItem
-            var items = this.GetItems(x => x.Id.Equals(id, StringComparison.Ordinal)).ToList();
+            var items = this.GetItems(x => x.Id.Equals(id, Utils.IgnoreCase)).ToList();
             if (items?.Count > 0)
             {
                 items.ForEach(x => x.Props = updateValueFactory(x.Id, x).Props);
@@ -246,8 +247,8 @@
         {
             var item = obj as Item;
             return item != null &&
-                   this.FlattenNames().Equals(item.FlattenNames(), StringComparison.OrdinalIgnoreCase) &&
-                   this.FlattenValues().Equals(item.FlattenValues(), StringComparison.OrdinalIgnoreCase);
+                   this.FlattenNames().Equals(item.FlattenNames(), Utils.IgnoreCase) &&
+                   this.FlattenValues().Equals(item.FlattenValues(), Utils.IgnoreCase);
         }
 
         public override int GetHashCode()
