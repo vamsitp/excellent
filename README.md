@@ -13,7 +13,7 @@ excellent -diff -i "TestData\Localizations_1.xlsx" "SELECT * FROM [dbo].[Localiz
 ##### CONFIG:
 ```xml
 <add key="PrimaryKey" value="{ResourceId}_{ResourceSet}" />
-<add key="TransformFormat" value="EXEC [dbo].[usp_InsertLocalizationData] @ResourceId = '{ResourceId}', @English = '{English}', @French = '{French}', @Spanish = '{Spanish}', @ResourceSet = '{ResourceSet}'" />
+<add key="TransformFormat" value="EXEC [dbo].[usp_InsertLocalizations] @ResourceId = '{ResourceId}', @English = '{English}', @French = '{French}', @Spanish = '{Spanish}', @ResourceSet = '{ResourceSet}'" />
 <add key="IgnoreCase" value="true" />
 ```
 **`excellent.exe.config`**

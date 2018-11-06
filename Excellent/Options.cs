@@ -20,7 +20,7 @@
         [Option('i', "input", Required = true, HelpText = "Input file to be transformed.")]
         public string Input { get; set; }
 
-        [Option('f', "format", Required = true, HelpText = "Transformation format (using Smart-Format).")]
+        [Option('f', "format", Required = false, HelpText = "Transformation format (using Smart-Format).")]
         public string Format { get; set; }
 
         [Usage(ApplicationAlias = "excellent.exe")]
@@ -65,7 +65,7 @@
         [Option('i', "input", Required = true, HelpText = "Input files to be diff'd.")]
         public IEnumerable<string> Inputs { get; set; }
 
-        [Option('c', "sqlconn", Required = true, HelpText = "Sql Server Connection-string).")]
+        [Option('c', "sqlconn", Required = false, HelpText = "Sql Server Connection-string).")]
         public string SqlConnection { get; set; }
 
         [Usage(ApplicationAlias = "excellent.exe")]
