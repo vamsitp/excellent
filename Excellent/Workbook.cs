@@ -9,14 +9,18 @@
 
     using ClosedXML.Excel;
 
+    using Serilog;
+
     using SmartFormat;
 
     public class Workbook
     {
-        public Workbook(DataSet dataSet)
+        public Workbook(DataSet dataSet, bool removeDuplicates)
         {
             this.Name = dataSet.DataSetName;
-            this.Sheets = dataSet.Tables.Cast<DataTable>().Select(t => new Worksheet(t)).ToList();
+            var tables = dataSet.Tables.Cast<DataTable>().ToList();
+            Log.Information($"> {this.Name} - Sheets: {tables.Count}");
+            this.Sheets = tables.Select(t => new Worksheet(t, removeDuplicates)).ToList();
         }
 
         public string Name { get; set; }
@@ -73,10 +77,21 @@
     {
         private const string FontFamily = "Segoe UI";
 
-        public Worksheet(DataTable dataTable)
+        public Worksheet(DataTable dataTable, bool removeDuplicates)
         {
             this.Name = dataTable.TableName;
             this.Items = dataTable.AsEnumerable().Select(r => new Item(r)).ToList();
+            List<IGrouping<string, Item>> dups = null;
+            if (removeDuplicates)
+            {
+                dups = this.RemoveAllDuplicateItems(x => x.Id);
+            }
+
+            Log.Information($"> {this.Name} - Items: {this.Items.Count}");
+            if (dups?.Count > 0)
+            {
+                Log.Warning($"> Duplicates: {dups.Count}\n\t{string.Join("\n\t", dups.Select(d => d.Key + " (" + d.Count() + ")"))}");
+            }
         }
 
         public string Name { get; set; }
@@ -95,12 +110,16 @@
 
         public Item GetItem(string id)
         {
-            return this.GetItem(x => x.Id.Equals(id, Utils.IgnoreCase));
-        }
-
-        public Item GetItem(Func<Item, bool> condition)
-        {
-            return this.Items.FirstOrDefault(condition); // TOEDO: SingleOrDefault
+            try
+            {
+                var item = this.Items.SingleOrDefault(x => x.Id.Equals(id, Utils.IgnoreCase));
+                return item;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, id);
+                throw;
+            }
         }
 
         public IEnumerable<Item> GetItems(Func<Item, bool> condition)
@@ -112,6 +131,22 @@
         {
             var comparer = Utils.IgnoreCase == StringComparison.OrdinalIgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
             var dups = this.Items.GroupBy(groupSelector, comparer)?.Where(g => g.Count() > 1).ToList();
+            return dups;
+        }
+
+        public List<IGrouping<string, Item>> RemoveAllDuplicateItems(Func<Item, string> groupSelector)
+        {
+            var dups1 = this.RemoveDuplicateItems(groupSelector, x => char.IsLower(x.Id.FirstOrDefault()));
+            var dups2 = this.RemoveDuplicateItems(groupSelector);
+            var dups = dups1.Union(dups2).ToList();
+            return dups;
+        }
+
+        public List<IGrouping<string, Item>> RemoveDuplicateItems(Func<Item, string> groupSelector, Func<Item, bool> condition = null)
+        {
+            var dups = this.GetDuplicateItems(groupSelector);
+            var dupItems = dups.SelectMany(g => g.Where(x => condition == null || condition.Invoke(x)));
+            this.Items = this.Items.Except(dupItems).ToList();
             return dups;
         }
 

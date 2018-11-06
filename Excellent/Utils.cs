@@ -15,14 +15,12 @@
 
     public static class Utils
     {
-        public readonly static StringComparison IgnoreCase = bool.TryParse(ConfigurationManager.AppSettings[nameof(IgnoreCase)], out var ignoreCase) && ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        public static StringComparison IgnoreCase = StringComparison.OrdinalIgnoreCase;
 
-        public static int Transform(string input, string output, string outputFormat)
+        public static int Transform(string input, string output, string outputFormat, bool removeDuplicates, bool ignoreCase)
         {
-            Log.Information($"Processing '{input}'");
-            var workbook = new Workbook(input.GetExcelData());
-            Log.Information($"Found {workbook.Sheets.Count} sheets\n");
-
+            IgnoreCase = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var workbook = new Workbook(input.GetExcelData(), removeDuplicates);
             for (var i = 0; i < workbook.Sheets.Count; i++)
             {
                 var sheet = workbook.Sheets[i];
@@ -57,13 +55,14 @@
             return 0;
         }
 
-        public static int Merge(IEnumerable<string> inputs, string output, bool keepRight, bool keepLeft)
+        public static int Merge(IEnumerable<string> inputs, string output, bool keepRight, bool keepLeft, bool removeDuplicates, bool ignoreCase)
         {
+            IgnoreCase = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             Log.Information($"Processing '{string.Join(", ", inputs)}'");
             var sheets = new ConcurrentDictionary<string, Worksheet>();
             foreach (var input in inputs)
             {
-                var workbook = new Workbook(input.GetExcelData());
+                var workbook = new Workbook(input.GetExcelData(), removeDuplicates);
                 var sheetsCount = workbook.Sheets.Count;
                 for (var i = 0; i < sheetsCount; i++)
                 {
@@ -132,19 +131,21 @@
             return 0;
         }
 
-        public static int Diff(IEnumerable<string> inputs, string output, string sqlConn)
+        public static int Diff(IEnumerable<string> inputs, string output, string sqlConn, bool removeDuplicates, bool ignoreCase)
         {
+            IgnoreCase = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             var workbooks = new List<Workbook>();
             if (!string.IsNullOrWhiteSpace(sqlConn))
             {
-                workbooks.Add(new Workbook(inputs.FirstOrDefault().GetExcelData()));
-                workbooks.Add(new Workbook(inputs.LastOrDefault().GetSqlData(sqlConn)));
+                workbooks.Add(new Workbook(inputs.FirstOrDefault().GetExcelData(), removeDuplicates));
+                var sqlCmd = inputs.Count() > 1 ? inputs.LastOrDefault() : ConfigurationManager.AppSettings["DiffSqlCommand"];
+                workbooks.Add(new Workbook(sqlCmd.GetSqlData(sqlConn), removeDuplicates));
             }
             else
             {
                 foreach (var input in inputs)
                 {
-                    workbooks.Add(new Workbook(input.GetExcelData()));
+                    workbooks.Add(new Workbook(input.GetExcelData(), removeDuplicates));
                 }
             }
 

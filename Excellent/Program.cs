@@ -22,9 +22,10 @@
             SetSmartFormatting();
             var result = Parser.Default.ParseArguments<TransformOptions, MergeOptions, DiffOptions>(args)
                 .MapResult(
-                (TransformOptions opts) => Utils.Transform(opts.Input, !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (Path.GetFileNameWithoutExtension(opts.Input) + ".txt"), !string.IsNullOrWhiteSpace(opts.Format) ? opts.Format : ConfigurationManager.AppSettings["TransformFormat"]),
-                (MergeOptions opts) => Utils.Merge(opts.Inputs, !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (string.Join("_", opts.Inputs.Select(Path.GetFileNameWithoutExtension)) + "_Merged.xlsx"), opts.KeepRight, opts.KeepLeft),
-                (DiffOptions opts) => Utils.Diff(opts.Inputs, opts.Output, opts.SqlConnection), errs => HandleParseErrors(errs?.ToList()));
+                (TransformOptions opts) => Utils.Transform(opts.Input, !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (Path.GetFileNameWithoutExtension(opts.Input) + ".txt"), !string.IsNullOrWhiteSpace(opts.Format) ? opts.Format : ConfigurationManager.AppSettings["TransformFormat"], opts.RemoveDuplicates, opts.IgnoreCase),
+                (MergeOptions opts) => Utils.Merge(opts.Inputs, !string.IsNullOrWhiteSpace(opts.Output) ? opts.Output : (string.Join("_", opts.Inputs.Select(Path.GetFileNameWithoutExtension)) + "_Merged.xlsx"), opts.KeepRight, opts.KeepLeft, opts.RemoveDuplicates, opts.IgnoreCase),
+                (DiffOptions opts) => Utils.Diff(opts.Inputs, opts.Output, opts.SqlConnection, opts.RemoveDuplicates, opts.IgnoreCase),
+                errs => HandleParseErrors(errs?.ToList()));
             if (result == 0)
             {
                 Log.Information("Done!");

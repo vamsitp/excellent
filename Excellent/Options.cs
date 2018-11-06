@@ -10,6 +10,12 @@
         [Option('o', "output", Required = false, HelpText = "Output file.")]
         public string Output { get; set; }
 
+        [Option('d', "remove-dups", Default = true, Required = false, HelpText = "Remove duplicates rows based on PK")]
+        public bool RemoveDuplicates { get; set; }
+
+        [Option('c', "ignore-case", Default = true, Required = false, HelpText = "Ignore casing while performing comparisons")]
+        public bool IgnoreCase { get; set; }
+
         [Option('v', "verbose", Required = false, HelpText = "Prints all messages to standard output.")]
         public bool Verbose { get; set; }
     }
@@ -65,7 +71,7 @@
         [Option('i', "input", Required = true, HelpText = "Input files to be diff'd.")]
         public IEnumerable<string> Inputs { get; set; }
 
-        [Option('c', "sqlconn", Required = false, HelpText = "Sql Server Connection-string).")]
+        [Option('s', "sqlconn", Required = false, HelpText = "Sql Server Connection-string).")]
         public string SqlConnection { get; set; }
 
         [Usage(ApplicationAlias = "excellent.exe")]
