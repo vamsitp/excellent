@@ -80,7 +80,7 @@
         public Worksheet(DataTable dataTable, bool removeDuplicates)
         {
             this.Name = dataTable.TableName;
-            this.Items = dataTable.AsEnumerable().Select(r => new Item(r)).ToList();
+            this.Items = dataTable.Select().Select(r => new Item(r)).ToList();
             List<IGrouping<string, Item>> dups = null;
             if (removeDuplicates)
             {

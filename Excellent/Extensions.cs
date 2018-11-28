@@ -8,7 +8,7 @@
     using System.IO;
     using System.Linq;
     using System.Reflection;
-
+    using System.Text;
     using ExcelDataReader;
     using Serilog;
 
@@ -40,6 +40,7 @@
             {
                 using (var stream = File.Open(input, FileMode.Open, FileAccess.Read))
                 {
+                    Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
                     using (var reader = ExcelReaderFactory.CreateReader(stream))
                     {
                         do

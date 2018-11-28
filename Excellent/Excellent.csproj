@@ -1,8 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net462</TargetFramework>
     <OutputType>Exe</OutputType>
-    <LangVersion>7.3</LangVersion>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <PackAsTool>true</PackAsTool>
+    <IsTool>true</IsTool>
+    <ToolCommandName>excellent</ToolCommandName>
+    <PackageOutputPath>./bin</PackageOutputPath>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Vamsi TP</Authors>
+    <Title>Excellent</Title>
+    <PackageDescription>Utils to Transform / Merge / Diff Excel files.</PackageDescription>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/vamsitp/excellent</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/vamsitp/excellent</RepositoryUrl>
+    <PackageTags>Excel;Merge;Diff;Transform;xlsx;Localization</PackageTags>
+    <Company>Microsoft</Company>
+    <Version>1.0.1</Version>
+    <StartupObject>Excellent.Program</StartupObject>
+    <ApplicationIcon />
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System.Configuration" />
@@ -22,6 +37,10 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
     <PackageReference Include="Serilog.Sinks.RollingFile" Version="3.3.0" />
     <PackageReference Include="SmartFormat.NET" Version="2.3.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
+    <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.5.1" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
   </ItemGroup>
   <ItemGroup>
     <None Update="TestData\Localizations_1.xlsx">

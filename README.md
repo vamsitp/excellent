@@ -2,6 +2,20 @@
 
 > ### UTILS TO **TRANSFORM** / **MERGE** / **DIFF** EXCEL FILES
 
+```bash
+# Publish package to nuget.org
+nuget push ./bin/excellent.1.0.1.nupkg -ApiKey <key> -Source https://api.nuget.org/v3/index.json
+
+# Install from nuget.org
+dotnet tool install -g excellent
+
+# Install from local project path
+dotnet tool install -g --add-source ./bin excellent
+
+# Uninstall
+dotnet tool uninstall -g excellent
+```
+---
 ##### SAMPLE USAGE:
 ```batch
 excellent -transform -i "TestData\Localizations_1.xlsx" [-o "Localizations_1.sql"] [-f "EXEC [dbo].[usp_InsertLocalizationData] @ResourceId = '{ResourceId}', @English = '{English}'"]
