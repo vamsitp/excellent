@@ -16,7 +16,7 @@ dotnet tool install -g --add-source ./bin excellent
 # Uninstall
 dotnet tool uninstall -g excellent
 ```
-> NOTE: If the Tool is not accesible post installation, add `%USERPROFILE%\.dotnet\tools` to the PATH env-var.
+> **NOTE**: If the Tool is not accesible post installation, add `%USERPROFILE%\.dotnet\tools` to the PATH env-var.
 ---
 
 ##### SAMPLE USAGE:
