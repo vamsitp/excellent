@@ -2,23 +2,6 @@
 
 > ### UTILS TO **TRANSFORM** / **MERGE** / **DIFF** EXCEL FILES
 
-```bash
-# Publish package to nuget.org
-nuget push ./bin/excellent.1.0.1.nupkg -ApiKey <key> -Source https://api.nuget.org/v3/index.json
-
-# Install from nuget.org
-dotnet tool install -g excellent
-dotnet tool install -g excellent --version 1.0.x
-
-# Install from local project path
-dotnet tool install -g --add-source ./bin excellent
-
-# Uninstall
-dotnet tool uninstall -g excellent
-```
-> **NOTE**: If the Tool is not accesible post installation, add `%USERPROFILE%\.dotnet\tools` to the PATH env-var.
----
-
 ##### SAMPLE USAGE:
 ```batch
 excellent -transform -i "TestData\Localizations_1.xlsx" [-o "Localizations_1.sql"] [-f "EXEC [dbo].[usp_InsertLocalizationData] @ResourceId = '{ResourceId}', @English = '{English}'"]
@@ -93,3 +76,19 @@ excellent -diff -i "TestData\Localizations_1.xlsx" "SELECT * FROM [dbo].[Localiz
     cmd = \"C:\\Program Files\\Beyond Compare 4\\BComp.exe\" \"$REMOTE\" \"$LOCAL\" \"$BASE\" \"$MERGED\"
 ```
 > [**`COMPARING MULTI-SHEET EXCEL FILES`**](https://www.scootersoftware.com/support.php?zz=kb_multisheetexcel)
+---
+```cmd
+# Publish package to nuget.org
+nuget push ./bin/excellent.1.0.1.nupkg -ApiKey <key> -Source https://api.nuget.org/v3/index.json
+
+# Install from nuget.org
+dotnet tool install -g excellent
+dotnet tool install -g excellent --version 1.0.x
+
+# Install from local project path
+dotnet tool install -g --add-source ./bin excellent
+
+# Uninstall
+dotnet tool uninstall -g excellent
+```
+> **NOTE**: If the Tool is not accesible post installation, add `%USERPROFILE%\.dotnet\tools` to the PATH env-var.
