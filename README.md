@@ -8,6 +8,7 @@ nuget push ./bin/excellent.1.0.1.nupkg -ApiKey <key> -Source https://api.nuget.o
 
 # Install from nuget.org
 dotnet tool install -g excellent
+dotnet tool install -g excellent --version 1.0.x
 
 # Install from local project path
 dotnet tool install -g --add-source ./bin excellent
@@ -15,7 +16,9 @@ dotnet tool install -g --add-source ./bin excellent
 # Uninstall
 dotnet tool uninstall -g excellent
 ```
+> NOTE: If the Tool is not accesible post installation, add `%USERPROFILE%\.dotnet\tools` to the PATH env-var.
 ---
+
 ##### SAMPLE USAGE:
 ```batch
 excellent -transform -i "TestData\Localizations_1.xlsx" [-o "Localizations_1.sql"] [-f "EXEC [dbo].[usp_InsertLocalizationData] @ResourceId = '{ResourceId}', @English = '{English}'"]
@@ -24,6 +27,7 @@ excellent -diff -i "TestData\Localizations_1.xlsx" "TestData\Localizations_2.xls
 excellent -diff -i "TestData\Localizations_1.xlsx" "SELECT * FROM [dbo].[Localizations]" -s "Data Source=server.database.windows.net;Initial Catalog=master;Persist Security Info=True;User ID=userid;Password=pwd"
 ```
 ---
+
 ##### CONFIG:
 ```xml
 <add key="PrimaryKey" value="{ResourceId}_{ResourceSet}" />
@@ -72,6 +76,7 @@ excellent -diff -i "TestData\Localizations_1.xlsx" "SELECT * FROM [dbo].[Localiz
   -d, --remove-dups    (Default: true) Remove duplicates rows based on PK
   -c, --ignore-case    (Default: true) Ignore casing while performing comparisons
 ```
+
 ---
 #### VS EXCEL-DIFF EXTERNAL GUI TOOL ([USING BEYOND-COMPARE](http://www.scootersoftware.com/support.php?zz=kb_vcs#visualstudio-git))
 
